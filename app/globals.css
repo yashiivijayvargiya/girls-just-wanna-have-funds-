@@ -479,7 +479,7 @@ textarea {
 }
 
 .welcome-script {
-  font-family: var(--font-heading);
+  font-family: 'Playfair Display', Georgia, serif;
   font-style: italic;
   font-weight: 500;
   color: var(--rose-deep);
