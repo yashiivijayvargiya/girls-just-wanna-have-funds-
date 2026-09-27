@@ -25,7 +25,7 @@ export default function Home() {
             <Link className="btn btn-primary welcome-cta" href="/login">Get started <span aria-hidden="true">↗</span></Link>
             <Link className="text-link" href="/about">Meet the community</Link>
           </div>
-          <p className="hero-note">Made for the girls building something of their own.</p>
+          <p className="hero-note">because keeping track of your finance can be fun too.</p>
         </div>
         <div className="hero-art" aria-label="Decorative retro-inspired finance illustration">
           <div className="art-window">
