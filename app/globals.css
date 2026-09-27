@@ -496,10 +496,11 @@ textarea {
 }
 
 .welcome-brand {
-  font-family: 'Bungee', Impact, sans-serif;
-  font-size: clamp(25px, 4vw, 46px);
-  line-height: 1.15;
-  letter-spacing: -.055em;
+  font-family: 'Fraunces', Georgia, serif;
+  font-size: clamp(34px, 5vw, 58px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.045em;
   color: var(--burgundy);
 }
 
