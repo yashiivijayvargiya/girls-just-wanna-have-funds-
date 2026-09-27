@@ -881,15 +881,17 @@ textarea {
 
 /* Gingham texture is intentionally limited to the login screen */
 
-.login-page {
+/* Gingham background for both authentication pages */
+.login-page,
+.signup-page {
   min-height: 100vh;
   padding-bottom: 50px;
   background-color: #f8f3e9;
   background-image:
-    linear-gradient(rgba(255, 255, 255, .12) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, .12) 1px, transparent 1px),
-    linear-gradient(0deg, transparent 0 50%, rgba(128, 57, 76, .48) 50% 100%),
-    linear-gradient(90deg, transparent 0 50%, rgba(128, 57, 76, .48) 50% 100%);
+    linear-gradient(rgba(255,255,255,.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.12) 1px, transparent 1px),
+    linear-gradient(0deg, transparent 0 50%, rgba(128,57,76,.48) 50% 100%),
+    linear-gradient(90deg, transparent 0 50%, rgba(128,57,76,.48) 50% 100%);
   background-size: 5px 5px, 5px 5px, 124px 124px, 124px 124px;
   background-position: 0 0, 0 0, 0 0, 0 0;
 }
