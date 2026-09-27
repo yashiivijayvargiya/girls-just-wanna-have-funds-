@@ -19,7 +19,7 @@ const dmSans = DM_Sans({
 export const metadata = {
   title: 'Girls Just Wanna Have Funds',
   description:
-    'Track orders, payments and profit - for every girl running her own business.',
+    'Track orders, payments and profit - for everyone running their own business.',
 };
 
 export default function RootLayout({ children }) {
