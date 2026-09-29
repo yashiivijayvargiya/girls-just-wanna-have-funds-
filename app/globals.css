@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bungee&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap');
 
 :root {
   --ink: #321d27;
@@ -90,7 +90,7 @@ textarea { resize:vertical; min-height:38px; }
 .welcome-title { margin:22px 0 18px; display:flex; flex-direction:column; align-items:flex-start; line-height:.95; }
 .welcome-script { font-family:'Playfair Display', Georgia, serif; font-style:italic; font-weight:500; color:var(--rose-deep); font-size:clamp(52px,7vw,88px); letter-spacing:-.07em; }
 .welcome-to { font-family:'Playfair Display',Georgia,serif; font-style:italic; font-size:18px; margin:5px 0 8px 7px; color:var(--muted); }
-.welcome-brand { font-family:'Bungee',Impact,sans-serif; font-size:clamp(25px,4vw,46px); line-height:1.15; letter-spacing:-.055em; color:var(--burgundy); }
+.welcome-brand { font-family: 'Fraunces', Georgia, serif; Impact,sans-serif; font-size:clamp(25px,4vw,46px); line-height:1.15; letter-spacing:-.055em; color:var(--burgundy); }
 .welcome-description { max-width:440px; color:#735e64; font-size:14px; line-height:1.85; }
 .hero-actions { display:flex; align-items:center; gap:23px; flex-wrap:wrap; margin-top:25px; }
 .welcome-cta { padding:14px 24px; min-width:150px; }
