@@ -221,5 +221,23 @@
     margin-left: 14px;
     margin-right: 14px;
     padding: 20px;
-  }
+  } 
+}
+/* Green gingham backdrop behind the founder photo */
+.story-visual {
+  background-color: #f5f1e7;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 16px,
+      rgba(67, 94, 64, 0.38) 16px 32px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 16px,
+      rgba(67, 94, 64, 0.38) 16px 32px
+    );
+  background-size: 32px 32px;
+  padding: 20px;
+  border-radius: 12px;
 }
