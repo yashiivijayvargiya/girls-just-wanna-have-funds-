@@ -310,3 +310,12 @@ textarea { resize:vertical; min-height:38px; }
   .dash-header-right { align-items:flex-start; width:100%; }
   .stats { width:100%; }
 }
+
+/* Founder photo on the about page - constrain to its column, keep it tidy */
+.story-visual { display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
+.founder-frame { width:100%; max-width:280px; margin:0 auto; }
+.founder-framed-photo { display:block; width:100%; height:auto; border-radius:14px; box-shadow:0 14px 32px rgba(66,31,48,.18); }
+.photo-caption { margin:0; color:var(--muted); font-size:12px; }
+@media (max-width:760px) {
+  .founder-frame { max-width:220px; }
+}
