@@ -23,9 +23,9 @@ export default function Home() {
           </p>
           <div className="hero-actions">
             <Link className="btn btn-primary welcome-cta" href="/login">Get started <span aria-hidden="true">↗</span></Link>
-            <Link className="text-link" href="/about">Meet the community</Link>
+            <Link className="text-link" href="/about">about us</Link>
           </div>
-          <p className="hero-note">Made for the girls building something of their own.</p>
+          <p className="hero-note">beacuse managing finance can be fun too.</p>
         </div>
         <div className="hero-art" aria-label="Decorative retro-inspired finance illustration">
           <div className="art-window">
@@ -57,10 +57,10 @@ export default function Home() {
           <p className="eyebrow">A space to build with confidence</p>
           <h2>Big ideas deserve<br /><em>clear numbers.</em></h2>
         </div>
-        <p>Whether you’re just starting out or finding your rhythm, this is a simple place to organise the moving parts of your business and feel more in control of the money behind it.</p>
+        <p>whether you’re just starting out or finding your rhythm, this is a simple place to organise the moving parts of your business and feel more in control of the money behind it.</p>
         <Link className="text-link" href="/about">Read our story ↗</Link>
       </section>
-      <footer className="site-footer"><span>girls just wanna have funds<span className="brand-dot">.</span></span><span>Made for independent business owners</span></footer>
+      <footer className="site-footer"><span>girls just wanna have funds<span className="brand-dot">.</span></span><span>made for independent business owners</span></footer>
     </main>
   );
 }
