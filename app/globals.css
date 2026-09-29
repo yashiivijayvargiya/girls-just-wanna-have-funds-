@@ -220,4 +220,29 @@ textarea { resize:vertical; min-height:38px; }
   .affordability-grid { grid-template-columns:1fr; gap:11px; }
   .affordability-result { align-items:flex-start; flex-direction:column; }
   .affordability-status { max-width:none; }
+} 
+.signup-page {
+  min-height: calc(100vh - 82px);
+  background-color: #f8f4ea;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(143, 57, 83, 0.42) 0 72px,
+      transparent 72px 144px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(143, 57, 83, 0.42) 0 72px,
+      transparent 72px 144px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.12) 0 1px,
+      transparent 1px 5px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.12) 0 1px,
+      transparent 1px 5px
+    );
 }
