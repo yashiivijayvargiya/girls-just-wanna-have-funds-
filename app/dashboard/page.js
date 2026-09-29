@@ -187,20 +187,24 @@ export default function Dashboard() {
 
   return (
     <div className="wrap">
-      <header>
-        <div>
+      <header className="dash-header">
+        <div className="dash-heading">
           <p className="muted" style={{ fontSize: 11, letterSpacing: '.4px', margin: '0 0 2px' }}>GIRLS JUST WANNA HAVE FUNDS</p>
           <h1>{settings?.business_name || 'Your Business'}</h1>
           <p className="muted">
-            {session.user.email} · <a href="#" onClick={(e) => { e.preventDefault(); setShowSettings(true); }}>business settings</a> ·{' '}
-            <a href="#" onClick={(e) => { e.preventDefault(); logout(); }}>log out</a>
+            {session.user.email} · <a href="#" onClick={(e) => { e.preventDefault(); setShowSettings(true); }}>business settings</a>
           </p>
         </div>
-        <div className="stats">
-          <div className="stat warn"><b>{rupee(stats.unpaidTotal, currency)}</b><small>OWED TO YOU</small></div>
-          <div className="stat"><b>{stats.pendingCount}</b><small>PENDING ORDERS</small></div>
-          <div className="stat"><b>{stats.thisMonth}</b><small>ORDERS THIS MONTH</small></div>
-          <div className="stat"><b>{rupee(stats.yearProfit, currency)}</b><small>PROFIT THIS YEAR</small></div>
+        <div className="dash-header-right">
+          <div className="stats">
+            <div className="stat warn"><b>{rupee(stats.unpaidTotal, currency)}</b><small>OWED TO YOU</small></div>
+            <div className="stat"><b>{stats.pendingCount}</b><small>PENDING ORDERS</small></div>
+            <div className="stat"><b>{stats.thisMonth}</b><small>ORDERS THIS MONTH</small></div>
+            <div className="stat"><b>{rupee(stats.yearProfit, currency)}</b><small>PROFIT THIS YEAR</small></div>
+          </div>
+          <button type="button" className="logout-btn" onClick={logout}>
+            <span aria-hidden="true">⏻</span> Log out
+          </button>
         </div>
       </header>
 
@@ -238,41 +242,6 @@ export default function Dashboard() {
         </div>
         <button className="btn btn-ghost" onClick={() => setMonthOffset((m) => Math.min(0, m + 1))} style={{ visibility: monthOffset < 0 ? 'visible' : 'hidden' }}>&rarr;</button>
       </div>
-
-      <section className="card affordability-card" aria-labelledby="affordability-title">
-        <div className="affordability-heading">
-          <div>
-            <p className="affordability-kicker">A LITTLE MONEY CHECK-IN</p>
-            <h2 id="affordability-title">Can I afford this?</h2>
-            <p className="affordability-intro">Try a purchase before you commit. Keep expected customer payments separate from cash you already have.</p>
-          </div>
-          <span className="affordability-spark" aria-hidden="true">✳</span>
-        </div>
-        <div className="affordability-grid">
-          <div><label htmlFor="cash-balance">Business cash available ({currency})</label><input id="cash-balance" type="number" min="0" step="0.01" placeholder="e.g. 12000" value={cashBalance} onChange={(e) => setCashBalance(e.target.value)} /></div>
-          <div><label htmlFor="planned-purchase">Planned purchase ({currency})</label><input id="planned-purchase" type="number" min="0" step="0.01" placeholder="e.g. 4500" value={plannedPurchase} onChange={(e) => setPlannedPurchase(e.target.value)} /></div>
-          <div><label htmlFor="upcoming-expenses">Other upcoming expenses ({currency})</label><input id="upcoming-expenses" type="number" min="0" step="0.01" placeholder="e.g. 2500" value={upcomingExpenses} onChange={(e) => setUpcomingExpenses(e.target.value)} /></div>
-          <div><label htmlFor="cash-buffer">Cash you want to keep untouched ({currency})</label><input id="cash-buffer" type="number" min="0" step="0.01" placeholder="Optional safety buffer" value={cashBuffer} onChange={(e) => setCashBuffer(e.target.value)} /></div>
-        </div>
-        <div className="affordability-result" aria-live="polite">
-          <div className="affordability-result-copy">
-            <span className="affordability-result-label">Cash left after purchase + expenses</span>
-            <strong className={hasAffordInputs && projectedAfterBuffer < 0 ? 'result-negative' : 'result-positive'}>{hasAffordInputs ? rupee(cashAfterPlan, currency) : 'Add your figures'}</strong>
-            {hasAffordInputs && (
-              <p>{projectedAfterBuffer < 0
-                ? `This plan would dip ${rupee(Math.abs(projectedAfterBuffer), currency)} below your desired cash buffer. Consider reducing or delaying the purchase.`
-                : protectedCash > 0
-                  ? `You would have ${rupee(projectedAfterBuffer, currency)} above your chosen cash buffer.`
-                  : 'Compare this amount with your other business needs before deciding.'}</p>
-            )}
-          </div>
-          <div className={'affordability-status ' + (!hasAffordInputs ? 'status-neutral' : projectedAfterBuffer < 0 ? 'status-caution' : 'status-ok')}>
-            {!hasAffordInputs ? 'Your estimate will appear here' : projectedAfterBuffer < 0 ? 'Review this purchase' : 'Within your entered budget'}
-          </div>
-        </div>
-        <div className="affordability-footnote">Outstanding customer payments ({rupee(stats.unpaidTotal, currency)}) are not counted as available cash until received. This is a planning estimate based only on the figures you enter.</div>
-        <button type="button" className="affordability-reset" onClick={() => { setCashBalance(''); setPlannedPurchase(''); setUpcomingExpenses(''); setCashBuffer(''); }}>Clear calculator</button>
-      </section>
 
       <div className="card">
         <h2>{form.id ? 'Edit order' : 'New order'}</h2>
@@ -315,6 +284,43 @@ export default function Dashboard() {
           </div>
         </form>
       </div>
+
+      <section className="card affordability-card" aria-labelledby="affordability-title">
+        <div className="affordability-heading">
+          <div>
+            <p className="affordability-kicker">A LITTLE MONEY CHECK-IN</p>
+            <h2 id="affordability-title">Can I afford this?</h2>
+            <p className="affordability-intro">Try a purchase before you commit. Keep expected customer payments separate from cash you already have.</p>
+          </div>
+          <span className="affordability-spark" aria-hidden="true">✳</span>
+        </div>
+        <div className="affordability-grid">
+          <div><label htmlFor="cash-balance">Business cash available ({currency})</label><input id="cash-balance" type="number" min="0" step="0.01" placeholder="e.g. 12000" value={cashBalance} onChange={(e) => setCashBalance(e.target.value)} /></div>
+          <div><label htmlFor="planned-purchase">Planned purchase ({currency})</label><input id="planned-purchase" type="number" min="0" step="0.01" placeholder="e.g. 4500" value={plannedPurchase} onChange={(e) => setPlannedPurchase(e.target.value)} /></div>
+          <div><label htmlFor="upcoming-expenses">Other upcoming expenses ({currency})</label><input id="upcoming-expenses" type="number" min="0" step="0.01" placeholder="e.g. 2500" value={upcomingExpenses} onChange={(e) => setUpcomingExpenses(e.target.value)} /></div>
+          <div><label htmlFor="cash-buffer">Cash you want to keep untouched ({currency})</label><input id="cash-buffer" type="number" min="0" step="0.01" placeholder="Optional safety buffer" value={cashBuffer} onChange={(e) => setCashBuffer(e.target.value)} /></div>
+        </div>
+        <div className="affordability-result" aria-live="polite">
+          <div className="affordability-result-copy">
+            <span className="affordability-result-label">Cash left after purchase + expenses</span>
+            <strong className={hasAffordInputs && projectedAfterBuffer < 0 ? 'result-negative' : 'result-positive'}>{hasAffordInputs ? rupee(cashAfterPlan, currency) : 'Add your figures'}</strong>
+            {hasAffordInputs && (
+              <p>{projectedAfterBuffer < 0
+                ? `This plan would dip ${rupee(Math.abs(projectedAfterBuffer), currency)} below your desired cash buffer. Consider reducing or delaying the purchase.`
+                : protectedCash > 0
+                  ? `You would have ${rupee(projectedAfterBuffer, currency)} above your chosen cash buffer.`
+                  : 'Compare this amount with your other business needs before deciding.'}</p>
+            )}
+          </div>
+          <div className={'affordability-status ' + (!hasAffordInputs ? 'status-neutral' : projectedAfterBuffer < 0 ? 'status-caution' : 'status-ok')}>
+            {!hasAffordInputs ? 'Your estimate will appear here' : projectedAfterBuffer < 0 ? 'Review this purchase' : 'Within your entered budget'}
+          </div>
+        </div>
+        <div className="affordability-footnote">Outstanding customer payments ({rupee(stats.unpaidTotal, currency)}) are not counted as available cash until received. This is a planning estimate based only on the figures you enter.</div>
+        <button type="button" className="affordability-reset" onClick={() => { setCashBalance(''); setPlannedPurchase(''); setUpcomingExpenses(''); setCashBuffer(''); }}>Clear calculator</button>
+      </section>
+
+
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
