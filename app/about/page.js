@@ -83,7 +83,7 @@ export default function AboutPage() {
           <p>
             This is a place to get organised, build financial
             confidence, and make thoughtful decisions for
-            your business - one step at a time.
+            your business - one step at a time. Because finance can be fun too.
           </p>
 
           <Link className="btn btn-primary" href="/login">
