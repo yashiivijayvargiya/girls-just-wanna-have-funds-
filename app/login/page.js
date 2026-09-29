@@ -44,7 +44,8 @@ export default function LoginPage() {
           <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </div>
         {error && <p className="error">{error}</p>}
-        <div className="btn-row">
+        <div className="btn-row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link className="muted" href="/forgot-password" style={{ fontSize: 12.5 }}>Forgot password?</Link>
           <button className="btn btn-primary" type="submit" disabled={loading}>
             {loading ? 'Logging in…' : 'Log in'}
           </button>
