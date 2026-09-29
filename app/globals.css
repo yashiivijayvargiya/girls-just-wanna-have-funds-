@@ -76,7 +76,7 @@ textarea { resize:vertical; min-height:38px; }
 .site-header { max-width:1180px; margin:0 auto; padding:24px 32px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid rgba(66,31,48,.14); }
 .brand-mark { display:flex; flex-direction:column; gap:3px; color:var(--burgundy); text-decoration:none; line-height:1; }
 .brand-kicker { font-size:8px; letter-spacing:.22em; font-weight:700; }
-.brand-name { font-family:'Bungee', Impact, sans-serif; font-size:clamp(13px,1.8vw,21px); letter-spacing:-.045em; line-height:1.25; }
+.brand-name { font-family: 'Fraunces', Georgia, serif; font-size:clamp(13px,1.8vw,21px); letter-spacing:-.045em; line-height:1.25; }
 .brand-dot { color:var(--rose); }
 .site-nav { display:flex; align-items:center; gap:25px; font-size:12px; font-weight:700; }
 .site-nav a, .auth-back { text-decoration:none; color:var(--burgundy); }
@@ -140,6 +140,7 @@ textarea { resize:vertical; min-height:38px; }
 .about-values article span { font-family:'Bungee',Impact,sans-serif; font-size:10px; color:var(--rose); }
 .about-values h3 { margin:14px 0 8px; font-family:'Playfair Display',Georgia,serif; font-size:21px; font-weight:600; color:var(--burgundy); }
 .about-values p { margin:0; color:#735e64; font-size:12px; line-height:1.8; }
+.about-title, .about-title em, .story-copy h2, .about-values h3 { font-family: 'Fraunces', Georgia, serif; }
 
 /* The gingham texture is intentionally limited to the login screen. */
 .login-page { min-height:100vh; padding-bottom:50px; background-color:#f8f3e9; background-image:linear-gradient(rgba(255,255,255,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.12) 1px,transparent 1px),linear-gradient(0deg,transparent 0 50%,rgba(128,57,76,.48) 50% 100%),linear-gradient(90deg,transparent 0 50%,rgba(128,57,76,.48) 50% 100%); background-size:5px 5px,5px 5px,124px 124px,124px 124px; background-position:0 0,0 0,0 0,0 0; }
@@ -309,7 +310,8 @@ textarea { resize:vertical; min-height:38px; }
 @media (max-width:600px) {
   .dash-header-right { align-items:flex-start; width:100%; }
   .stats { width:100%; }
-}
+} 
+.signup-page { min-height: 100vh; padding-bottom: 50px; box-sizing: border-box; background-color: #f8f3e9; }
 
 /* Founder photo on the about page - constrain to its column, keep it tidy */
 .story-visual { display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
