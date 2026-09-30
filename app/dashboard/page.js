@@ -5,10 +5,21 @@ import { supabase } from '../../lib/supabaseClient';
 
 const emptyForm = {
   id: null, name: '', city: '', products: '', total: '', delivery: '',
-  material: '', packaging: '', shipping: '', other: '',
+  material: '', packaging: '', shipping: '', other: '', targetMarkup: '',
   order_date: new Date().toISOString().slice(0, 10),
   payment: 'unpaid', paid_amount: '', status: 'pending', notes: '',
 };
+
+// Profit margin (% of what the customer paid you) and profit markup
+// (% on top of what it cost you to make) from any order-shaped object.
+function profitRatios(o) {
+  const revenue = (Number(o.total) || 0) + (Number(o.delivery) || 0);
+  const costs = (Number(o.material) || 0) + (Number(o.packaging) || 0) + (Number(o.shipping) || 0) + (Number(o.other) || 0);
+  const profit = o.profit !== undefined ? Number(o.profit) || 0 : revenue - costs;
+  const marginPct = revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : null;
+  const markupPct = costs > 0 ? Math.round((profit / costs) * 1000) / 10 : null;
+  return { revenue, costs, profit, marginPct, markupPct };
+}
 
 function rupee(n, symbol) {
   return symbol + Number(n || 0).toLocaleString('en-IN');
@@ -98,10 +109,13 @@ export default function Dashboard() {
   const hasAffordInputs = cashBalance !== '' && plannedPurchase !== '';
 
   // --- profit preview while typing -------------------------------------
-  const previewProfit = useMemo(() => {
-    const total = Number(form.total) || 0, delivery = Number(form.delivery) || 0;
-    const costs = (Number(form.material) || 0) + (Number(form.packaging) || 0) + (Number(form.shipping) || 0) + (Number(form.other) || 0);
-    return total + delivery - costs;
+  const preview = useMemo(() => {
+    const { revenue, costs, profit, marginPct, markupPct } = profitRatios(form);
+    const markup = form.targetMarkup === '' ? null : Number(form.targetMarkup);
+    const suggestedTotal = (costs > 0 && markup !== null && !isNaN(markup))
+      ? Math.max(0, costs * (1 + markup / 100) - (Number(form.delivery) || 0))
+      : null;
+    return { revenue, costs, profit, marginPct, markupPct, suggestedTotal };
   }, [form]);
 
   // --- actions -----------------------------------------------------
@@ -112,9 +126,10 @@ export default function Dashboard() {
     const shipping = Number(form.shipping) || 0, other = Number(form.other) || 0;
     const profit = total + delivery - (material + packaging + shipping + other);
     const paid_amount = form.payment === 'paid' ? total : form.payment === 'partial' ? Number(form.paid_amount) || 0 : 0;
+    const target_markup = form.targetMarkup === '' ? null : Number(form.targetMarkup);
     const row = {
       user_id: session.user.id, name: form.name.trim(), city: form.city.trim(), products: form.products.trim(),
-      total, delivery, material, packaging, shipping, other, profit,
+      total, delivery, material, packaging, shipping, other, profit, target_markup,
       order_date: form.order_date, payment: form.payment, paid_amount, status: form.status, notes: form.notes.trim(),
       updated_at: new Date().toISOString(),
     };
@@ -131,7 +146,7 @@ export default function Dashboard() {
     setForm({
       id: o.id, name: o.name || '', city: o.city || '', products: o.products || '',
       total: o.total || '', delivery: o.delivery || '', material: o.material || '', packaging: o.packaging || '',
-      shipping: o.shipping || '', other: o.other || '', order_date: o.order_date || '',
+      shipping: o.shipping || '', other: o.other || '', targetMarkup: o.target_markup ?? '', order_date: o.order_date || '',
       payment: o.payment || 'unpaid', paid_amount: o.paid_amount || '', status: o.status || 'pending', notes: o.notes || '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -164,12 +179,16 @@ export default function Dashboard() {
 
   function exportExcel() {
     if (!orders.length) { alert('No orders to export yet.'); return; }
-    const rows = orders.map((o) => ({
-      Date: o.order_date || '', Customer: o.name || '', City: o.city || '', Products: o.products || '',
-      'Order Total': o.total, 'Delivery Charge': o.delivery, 'Raw Material Cost': o.material,
-      'Packaging Cost': o.packaging, 'Shipping Cost': o.shipping, 'Other Cost': o.other, Profit: o.profit,
-      'Payment Status': o.payment, 'Amount Paid': o.paid_amount, 'Order Status': o.status, Notes: o.notes || '',
-    }));
+    const rows = orders.map((o) => {
+      const { marginPct, markupPct } = profitRatios(o);
+      return {
+        Date: o.order_date || '', Customer: o.name || '', City: o.city || '', Products: o.products || '',
+        'Order Total': o.total, 'Delivery Charge': o.delivery, 'Raw Material Cost': o.material,
+        'Packaging Cost': o.packaging, 'Shipping Cost': o.shipping, 'Other Cost': o.other, Profit: o.profit,
+        'Profit Margin %': marginPct ?? '', 'Profit Markup %': markupPct ?? '', 'Target Markup %': o.target_markup ?? '',
+        'Payment Status': o.payment, 'Amount Paid': o.paid_amount, 'Order Status': o.status, Notes: o.notes || '',
+      };
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Orders');
@@ -260,8 +279,30 @@ export default function Dashboard() {
             <div><label>Shipping cost you paid</label><input type="number" min="0" value={form.shipping} onChange={(e) => setForm({ ...form, shipping: e.target.value })} /></div>
             <div><label>Other cost (optional)</label><input type="number" min="0" value={form.other} onChange={(e) => setForm({ ...form, other: e.target.value })} /></div>
           </div>
+          <div className="full" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: '12px 14px' }}>
+            <div style={{ minWidth: 200 }}>
+              <label>Target profit markup % (optional)</label>
+              <input type="number" min="0" step="0.5" placeholder="e.g. 40" value={form.targetMarkup} onChange={(e) => setForm({ ...form, targetMarkup: e.target.value })} />
+            </div>
+            <div className="muted" style={{ flex: '1 1 220px' }}>
+              {preview.suggestedTotal !== null
+                ? <>Suggested order total at {form.targetMarkup}% markup on cost: <strong style={{ color: 'var(--ink)' }}>{rupee(preview.suggestedTotal, currency)}</strong> <span className="muted">(before delivery charge)</span></>
+                : 'Enter your costs above and a markup % to get a suggested order total.'}
+            </div>
+            {preview.suggestedTotal !== null && (
+              <button type="button" className="btn btn-ghost" onClick={() => setForm((f) => ({ ...f, total: String(Math.round(preview.suggestedTotal)) }))}>
+                Use this price
+              </button>
+            )}
+          </div>
           <div className="full muted">
-            {(form.total || form.material || form.packaging || form.shipping || form.other) ? `Estimated profit: ${rupee(previewProfit, currency)}` : ''}
+            {(form.total || form.material || form.packaging || form.shipping || form.other) ? (
+              <>
+                Estimated profit: {rupee(preview.profit, currency)}
+                {preview.marginPct !== null && <> · Margin {preview.marginPct}%</>}
+                {preview.markupPct !== null && <> · Markup {preview.markupPct}%</>}
+              </>
+            ) : ''}
           </div>
           <div>
             <label>Payment status</label>
@@ -345,6 +386,7 @@ export default function Dashboard() {
           <div className="empty">No orders match yet. Add one above, or clear your filters.</div>
         ) : filtered.map((o) => {
           const due = o.payment !== 'paid' ? o.total - (o.paid_amount || 0) : 0;
+          const { marginPct, markupPct } = profitRatios(o);
           return (
             <div className="order" key={o.id}>
               <div className="order-top">
@@ -363,6 +405,9 @@ export default function Dashboard() {
               </div>
               <div className="order-meta" style={{ marginTop: 8 }}>
                 Profit: <strong style={{ color: 'var(--paid)' }}>{rupee(o.profit, currency)}</strong>
+                {marginPct !== null && <> · Margin {marginPct}%</>}
+                {markupPct !== null && <> · Markup {markupPct}%</>}
+                {o.target_markup != null && <> · Target was {o.target_markup}%</>}
               </div>
               {o.notes && <div className="order-meta">{o.notes}</div>}
               <div className="order-actions">
