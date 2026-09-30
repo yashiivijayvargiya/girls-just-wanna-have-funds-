@@ -17,10 +17,13 @@ const emptyForm = {
 function tryEvaluate(str) {
   const s = String(str).trim();
   if (s === '') return null;
-  if (!/^[0-9+\-*/(). ]+$/.test(s)) return null; // not a plain number/expression - leave it alone
+  // Allows + - * / ^ (power) and parentheses/decimals - nothing else,
+  // so this can never run arbitrary code, only arithmetic.
+  if (!/^[0-9+\-*/^(). ]+$/.test(s)) return null;
+  const jsExpr = s.replace(/\^/g, '**'); // people type 2^3, JS needs 2**3
   try {
     // eslint-disable-next-line no-new-func
-    const result = Function('"use strict"; return (' + s + ')')();
+    const result = Function('"use strict"; return (' + jsExpr + ')')();
     return (typeof result === 'number' && isFinite(result)) ? result : null;
   } catch {
     return null;
@@ -37,6 +40,20 @@ function parseAmount(str) {
 // finishes typing (e.g. on blur), so "270+180+40" becomes "490" on screen.
 function makeAmountBlurHandler(setForm, field) {
   return () => {
+    setForm((f) => {
+      const evaluated = tryEvaluate(f[field]);
+      if (evaluated === null) return f;
+      const rounded = Math.round(evaluated * 100) / 100;
+      return { ...f, [field]: String(rounded) };
+    });
+  };
+}
+// Same calculation, but triggered by pressing Enter instead of clicking away -
+// and stops Enter from accidentally submitting the whole order form.
+function makeAmountKeyDownHandler(setForm, field) {
+  return (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
     setForm((f) => {
       const evaluated = tryEvaluate(f[field]);
       if (evaluated === null) return f;
@@ -345,15 +362,15 @@ export default function Dashboard() {
           <div><label>City (optional)</label><input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
           <div className="full"><label>Products</label><textarea value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} /></div>
           <div className="row3">
-            <div><label>Order total</label><input required type="text" inputMode="decimal" placeholder="0 or 270+180+40" value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'total')} /></div>
-            <div><label>Delivery charge to customer</label><input type="text" inputMode="decimal" value={form.delivery} onChange={(e) => setForm({ ...form, delivery: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'delivery')} /></div>
+            <div><label>Order total</label><input required type="text" inputMode="decimal" placeholder="0 or 270+180+40" value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'total')} onKeyDown={makeAmountKeyDownHandler(setForm, 'total')} /></div>
+            <div><label>Delivery charge to customer</label><input type="text" inputMode="decimal" value={form.delivery} onChange={(e) => setForm({ ...form, delivery: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'delivery')} onKeyDown={makeAmountKeyDownHandler(setForm, 'delivery')} /></div>
             <div><label>Date</label><input type="date" value={form.order_date} onChange={(e) => setForm({ ...form, order_date: e.target.value })} /></div>
           </div>
           <div className="row3 row4">
-            <div><label>Raw material cost</label><input type="text" inputMode="decimal" value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'material')} /></div>
-            <div><label>Packaging cost</label><input type="text" inputMode="decimal" value={form.packaging} onChange={(e) => setForm({ ...form, packaging: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'packaging')} /></div>
-            <div><label>Shipping cost you paid</label><input type="text" inputMode="decimal" value={form.shipping} onChange={(e) => setForm({ ...form, shipping: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'shipping')} /></div>
-            <div><label>Other cost (optional)</label><input type="text" inputMode="decimal" value={form.other} onChange={(e) => setForm({ ...form, other: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'other')} /></div>
+            <div><label>Raw material cost</label><input type="text" inputMode="decimal" value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'material')} onKeyDown={makeAmountKeyDownHandler(setForm, 'material')} /></div>
+            <div><label>Packaging cost</label><input type="text" inputMode="decimal" value={form.packaging} onChange={(e) => setForm({ ...form, packaging: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'packaging')} onKeyDown={makeAmountKeyDownHandler(setForm, 'packaging')} /></div>
+            <div><label>Shipping cost you paid</label><input type="text" inputMode="decimal" value={form.shipping} onChange={(e) => setForm({ ...form, shipping: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'shipping')} onKeyDown={makeAmountKeyDownHandler(setForm, 'shipping')} /></div>
+            <div><label>Other cost (optional)</label><input type="text" inputMode="decimal" value={form.other} onChange={(e) => setForm({ ...form, other: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'other')} onKeyDown={makeAmountKeyDownHandler(setForm, 'other')} /></div>
           </div>
           <div className="full" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: '12px 14px' }}>
             <div style={{ minWidth: 200 }}>
@@ -387,7 +404,7 @@ export default function Dashboard() {
             </select>
           </div>
           {form.payment === 'partial' && (
-            <div><label>Amount paid</label><input type="text" inputMode="decimal" value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'paid_amount')} /></div>
+            <div><label>Amount paid</label><input type="text" inputMode="decimal" value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'paid_amount')} onKeyDown={makeAmountKeyDownHandler(setForm, 'paid_amount')} /></div>
           )}
           <div><label>Order status</label>
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
