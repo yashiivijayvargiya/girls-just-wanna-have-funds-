@@ -12,10 +12,44 @@ const emptyForm = {
 
 // Profit margin (% of what the customer paid you) and profit markup
 // (% on top of what it cost you to make) from any order-shaped object.
+// Lets amount fields accept a quick sum like "270+180+40" (e.g. adding up a
+// few products in one order) and evaluates it into a real number.
+function tryEvaluate(str) {
+  const s = String(str).trim();
+  if (s === '') return null;
+  if (!/^[0-9+\-*/(). ]+$/.test(s)) return null; // not a plain number/expression - leave it alone
+  try {
+    // eslint-disable-next-line no-new-func
+    const result = Function('"use strict"; return (' + s + ')')();
+    return (typeof result === 'number' && isFinite(result)) ? result : null;
+  } catch {
+    return null;
+  }
+}
+function parseAmount(str) {
+  if (str === '' || str === null || str === undefined) return 0;
+  const evaluated = tryEvaluate(str);
+  if (evaluated !== null) return evaluated;
+  const n = Number(str);
+  return isNaN(n) ? 0 : n;
+}
+// Auto-resolves an amount field to its calculated number once the person
+// finishes typing (e.g. on blur), so "270+180+40" becomes "490" on screen.
+function makeAmountBlurHandler(setForm, field) {
+  return () => {
+    setForm((f) => {
+      const evaluated = tryEvaluate(f[field]);
+      if (evaluated === null) return f;
+      const rounded = Math.round(evaluated * 100) / 100;
+      return { ...f, [field]: String(rounded) };
+    });
+  };
+}
+
 function profitRatios(o) {
-  const revenue = (Number(o.total) || 0) + (Number(o.delivery) || 0);
-  const costs = (Number(o.material) || 0) + (Number(o.packaging) || 0) + (Number(o.shipping) || 0) + (Number(o.other) || 0);
-  const profit = o.profit !== undefined ? Number(o.profit) || 0 : revenue - costs;
+  const revenue = parseAmount(o.total) + parseAmount(o.delivery);
+  const costs = parseAmount(o.material) + parseAmount(o.packaging) + parseAmount(o.shipping) + parseAmount(o.other);
+  const profit = o.profit !== undefined ? parseAmount(o.profit) : revenue - costs;
   const marginPct = revenue > 0 ? Math.round((profit / revenue) * 1000) / 10 : null;
   const markupPct = costs > 0 ? Math.round((profit / costs) * 1000) / 10 : null;
   return { revenue, costs, profit, marginPct, markupPct };
@@ -34,6 +68,7 @@ export default function Dashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [monthOffset, setMonthOffset] = useState(0);
+  const [yearOffset, setYearOffset] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsForm, setSettingsForm] = useState({ business_name: '', currency: '₹' });
   const [cashBalance, setCashBalance] = useState('');
@@ -91,8 +126,27 @@ export default function Dashboard() {
     const label = d.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
     const list = orders.filter((o) => (o.order_date || '').startsWith(key));
     const profit = list.reduce((s, o) => s + (o.profit || 0), 0);
-    return { label, profit, count: list.length };
+    const margins = list.map((o) => profitRatios(o).marginPct).filter((v) => v !== null);
+    const avgMarginPct = margins.length ? Math.round((margins.reduce((a, b) => a + b, 0) / margins.length) * 10) / 10 : null;
+    return { label, profit, count: list.length, avgMarginPct };
   }, [orders, monthOffset]);
+
+  const yearView = useMemo(() => {
+    const year = new Date().getFullYear() + yearOffset;
+    const key = String(year);
+    const list = orders.filter((o) => (o.order_date || '').startsWith(key));
+    const profit = list.reduce((s, o) => s + (o.profit || 0), 0);
+    const margins = list.map((o) => profitRatios(o).marginPct).filter((v) => v !== null);
+    const avgMarginPct = margins.length ? Math.round((margins.reduce((a, b) => a + b, 0) / margins.length) * 10) / 10 : null;
+    return { year, profit, count: list.length, avgMarginPct };
+  }, [orders, yearOffset]);
+
+  // Every year that actually has at least one order - lets us know how far
+  // back "previous year" navigation should be able to go.
+  const earliestOrderYear = useMemo(() => {
+    const years = orders.map((o) => Number((o.order_date || '').slice(0, 4))).filter((y) => !isNaN(y) && y > 0);
+    return years.length ? Math.min(...years) : new Date().getFullYear();
+  }, [orders]);
 
   const filtered = useMemo(() => orders.filter((o) => {
     if (payFilter !== 'all' && o.payment !== payFilter) return false;
@@ -113,7 +167,7 @@ export default function Dashboard() {
     const { revenue, costs, profit, marginPct, markupPct } = profitRatios(form);
     const markup = form.targetMarkup === '' ? null : Number(form.targetMarkup);
     const suggestedTotal = (costs > 0 && markup !== null && !isNaN(markup))
-      ? Math.max(0, costs * (1 + markup / 100) - (Number(form.delivery) || 0))
+      ? Math.max(0, costs * (1 + markup / 100) - parseAmount(form.delivery))
       : null;
     return { revenue, costs, profit, marginPct, markupPct, suggestedTotal };
   }, [form]);
@@ -121,11 +175,11 @@ export default function Dashboard() {
   // --- actions -----------------------------------------------------
   async function saveOrder(e) {
     e.preventDefault();
-    const total = Number(form.total) || 0, delivery = Number(form.delivery) || 0;
-    const material = Number(form.material) || 0, packaging = Number(form.packaging) || 0;
-    const shipping = Number(form.shipping) || 0, other = Number(form.other) || 0;
+    const total = parseAmount(form.total), delivery = parseAmount(form.delivery);
+    const material = parseAmount(form.material), packaging = parseAmount(form.packaging);
+    const shipping = parseAmount(form.shipping), other = parseAmount(form.other);
     const profit = total + delivery - (material + packaging + shipping + other);
-    const paid_amount = form.payment === 'paid' ? total : form.payment === 'partial' ? Number(form.paid_amount) || 0 : 0;
+    const paid_amount = form.payment === 'paid' ? total : form.payment === 'partial' ? parseAmount(form.paid_amount) : 0;
     const target_markup = form.targetMarkup === '' ? null : Number(form.targetMarkup);
     const row = {
       user_id: session.user.id, name: form.name.trim(), city: form.city.trim(), products: form.products.trim(),
@@ -258,8 +312,30 @@ export default function Dashboard() {
           <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--paid)' }}>
             {rupee(monthView.profit, currency)} · {monthView.count} order{monthView.count === 1 ? '' : 's'}
           </div>
+          {monthView.avgMarginPct !== null && (
+            <div className="muted" style={{ marginTop: 4 }}>Average profit margin this month: {monthView.avgMarginPct}%</div>
+          )}
         </div>
         <button className="btn btn-ghost" onClick={() => setMonthOffset((m) => Math.min(0, m + 1))} style={{ visibility: monthOffset < 0 ? 'visible' : 'hidden' }}>&rarr;</button>
+      </div>
+
+      <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button
+          className="btn btn-ghost"
+          onClick={() => setYearOffset((y) => y - 1)}
+          style={{ visibility: (new Date().getFullYear() + yearOffset) > earliestOrderYear ? 'visible' : 'hidden' }}
+        >&larr;</button>
+        <div style={{ textAlign: 'center' }}>
+          <div className="muted">YEARLY PROFIT</div>
+          <div style={{ fontSize: 17, fontWeight: 600 }}>{yearView.year}</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--paid)' }}>
+            {rupee(yearView.profit, currency)} · {yearView.count} order{yearView.count === 1 ? '' : 's'}
+          </div>
+          {yearView.avgMarginPct !== null && (
+            <div className="muted" style={{ marginTop: 4 }}>Average profit margin this year: {yearView.avgMarginPct}%</div>
+          )}
+        </div>
+        <button className="btn btn-ghost" onClick={() => setYearOffset((y) => Math.min(0, y + 1))} style={{ visibility: yearOffset < 0 ? 'visible' : 'hidden' }}>&rarr;</button>
       </div>
 
       <div className="card">
@@ -269,15 +345,15 @@ export default function Dashboard() {
           <div><label>City (optional)</label><input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
           <div className="full"><label>Products</label><textarea value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} /></div>
           <div className="row3">
-            <div><label>Order total</label><input required type="number" min="0" value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} /></div>
-            <div><label>Delivery charge to customer</label><input type="number" min="0" value={form.delivery} onChange={(e) => setForm({ ...form, delivery: e.target.value })} /></div>
+            <div><label>Order total</label><input required type="text" inputMode="decimal" placeholder="0 or 270+180+40" value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'total')} /></div>
+            <div><label>Delivery charge to customer</label><input type="text" inputMode="decimal" value={form.delivery} onChange={(e) => setForm({ ...form, delivery: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'delivery')} /></div>
             <div><label>Date</label><input type="date" value={form.order_date} onChange={(e) => setForm({ ...form, order_date: e.target.value })} /></div>
           </div>
           <div className="row3 row4">
-            <div><label>Raw material cost</label><input type="number" min="0" value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} /></div>
-            <div><label>Packaging cost</label><input type="number" min="0" value={form.packaging} onChange={(e) => setForm({ ...form, packaging: e.target.value })} /></div>
-            <div><label>Shipping cost you paid</label><input type="number" min="0" value={form.shipping} onChange={(e) => setForm({ ...form, shipping: e.target.value })} /></div>
-            <div><label>Other cost (optional)</label><input type="number" min="0" value={form.other} onChange={(e) => setForm({ ...form, other: e.target.value })} /></div>
+            <div><label>Raw material cost</label><input type="text" inputMode="decimal" value={form.material} onChange={(e) => setForm({ ...form, material: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'material')} /></div>
+            <div><label>Packaging cost</label><input type="text" inputMode="decimal" value={form.packaging} onChange={(e) => setForm({ ...form, packaging: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'packaging')} /></div>
+            <div><label>Shipping cost you paid</label><input type="text" inputMode="decimal" value={form.shipping} onChange={(e) => setForm({ ...form, shipping: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'shipping')} /></div>
+            <div><label>Other cost (optional)</label><input type="text" inputMode="decimal" value={form.other} onChange={(e) => setForm({ ...form, other: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'other')} /></div>
           </div>
           <div className="full" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 8, padding: '12px 14px' }}>
             <div style={{ minWidth: 200 }}>
@@ -311,7 +387,7 @@ export default function Dashboard() {
             </select>
           </div>
           {form.payment === 'partial' && (
-            <div><label>Amount paid</label><input type="number" min="0" value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} /></div>
+            <div><label>Amount paid</label><input type="text" inputMode="decimal" value={form.paid_amount} onChange={(e) => setForm({ ...form, paid_amount: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'paid_amount')} /></div>
           )}
           <div><label>Order status</label>
             <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
