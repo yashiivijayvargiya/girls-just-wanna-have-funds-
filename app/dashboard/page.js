@@ -2,6 +2,8 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { supabase } from '../../lib/supabaseClient';
+import AppNav from '../../components/AppNav';
+import { productCosts, suggestPrice, pricingOptions } from '../../lib/pricing';
 
 const emptyForm = {
   id: null, name: '', city: '', products: '', total: '', delivery: '',
@@ -79,6 +81,9 @@ function rupee(n, symbol) {
 export default function Dashboard() {
   const [session, setSession] = useState(undefined); // undefined = checking, null = signed out
   const [settings, setSettings] = useState(null);
+  const [catalog, setCatalog] = useState({ products: [], lines: [], materials: [] });
+  const [fillProductId, setFillProductId] = useState('');
+  const [fillQty, setFillQty] = useState('1');
   const [orders, setOrders] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [payFilter, setPayFilter] = useState('all');
@@ -113,6 +118,12 @@ export default function Dashboard() {
     if (s) { setSettings(s); setSettingsForm({ business_name: s.business_name, currency: s.currency }); }
     else setShowSettings(true);
     setOrders(o || []);
+    const [pr, ln, mt] = await Promise.all([
+      supabase.from('products').select('*').eq('user_id', userId).order('name'),
+      supabase.from('recipe_lines').select('*').eq('user_id', userId),
+      supabase.from('materials').select('id, unit_cost').eq('user_id', userId),
+    ]);
+    setCatalog({ products: pr.data || [], lines: ln.data || [], materials: mt.data || [] });
   }, []);
 
   useEffect(() => {
@@ -174,6 +185,46 @@ export default function Dashboard() {
   }), [orders, payFilter, statusFilter, search]);
 
   const currency = settings?.currency || '₹';
+
+  // Products you've set up on the Products page, with live cost + suggested price
+  const productPicks = useMemo(() => {
+    const byId = Object.fromEntries(catalog.materials.map((m) => [m.id, m]));
+    return catalog.products.map((p) => {
+      const costs = productCosts(p, catalog.lines.filter((l) => l.product_id === p.id), byId);
+      const price = suggestPrice(costs.totalCost, pricingOptions(settings, p));
+      return { ...p, costs, suggested: price.ok ? price.price : 0 };
+    });
+  }, [catalog, settings]);
+
+  // Your default margin/markup from Settings, expressed as the markup % this form uses
+  const defaultMarkup = useMemo(() => {
+    if (!settings || settings.default_margin === undefined || settings.default_margin === null) return '';
+    const v = Number(settings.default_margin) || 0;
+    if (settings.pricing_mode === 'markup') return v;
+    return v < 100 ? Math.round((v / (100 - v)) * 1000) / 10 : '';
+  }, [settings]);
+
+  const blankForm = () => ({ ...emptyForm, order_date: new Date().toISOString().slice(0, 10), targetMarkup: defaultMarkup === '' ? '' : String(defaultMarkup) });
+
+  useEffect(() => {
+    if (defaultMarkup === '') return;
+    setForm((f) => (f.id === null && f.targetMarkup === '' ? { ...f, targetMarkup: String(defaultMarkup) } : f));
+  }, [defaultMarkup]);
+
+  function applyProduct() {
+    const p = productPicks.find((x) => x.id === fillProductId);
+    if (!p) return;
+    const qty = Math.max(1, Number(fillQty) || 1);
+    const r2 = (n) => String(Math.round(n * 100) / 100);
+    setForm((f) => ({
+      ...f,
+      material: r2((p.costs.materialCost + p.costs.wasteCost) * qty),
+      packaging: r2(p.costs.packagingCost * qty),
+      other: p.costs.labourCost > 0 ? r2(p.costs.labourCost * qty) : f.other,
+      total: f.total === '' && p.suggested > 0 ? r2(p.suggested * qty) : f.total,
+      products: f.products.trim() === '' ? (qty > 1 ? `${qty} × ${p.name}` : p.name) : f.products,
+    }));
+  }
   const cashAfterPlan = (Number(cashBalance) || 0) - (Number(plannedPurchase) || 0) - (Number(upcomingExpenses) || 0);
   const protectedCash = Number(cashBuffer) || 0;
   const projectedAfterBuffer = cashAfterPlan - protectedCash;
@@ -209,7 +260,9 @@ export default function Dashboard() {
       : supabase.from('orders').insert(row);
     const { error } = await query;
     if (error) { alert('Could not save: ' + error.message); return; }
-    setForm(emptyForm);
+    setForm(blankForm());
+    setFillProductId('');
+    setFillQty('1');
     loadAll(session.user.id);
   }
 
@@ -277,6 +330,7 @@ export default function Dashboard() {
 
   return (
     <div className="wrap">
+      <AppNav active="orders" showLogout={false} />
       <header className="dash-header">
         <div className="dash-heading">
           <p className="muted" style={{ fontSize: 11, letterSpacing: '.4px', margin: '0 0 2px' }}>GIRLS JUST WANNA HAVE FUNDS</p>
@@ -360,6 +414,24 @@ export default function Dashboard() {
         <form onSubmit={saveOrder}>
           <div><label>Customer name</label><input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div><label>City (optional)</label><input value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} /></div>
+          {productPicks.length > 0 && (
+            <div className="fill-box">
+              <div>
+                <label>Fill costs from a product (optional)</label>
+                <select value={fillProductId} onChange={(e) => setFillProductId(e.target.value)}>
+                  <option value="">Choose a product…</option>
+                  {productPicks.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name} · costs {rupee(p.costs.totalCost, currency)}{p.suggested ? ` · suggested ${rupee(p.suggested, currency)}` : ''}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Quantity</label>
+                <input type="number" min="1" value={fillQty} onChange={(e) => setFillQty(e.target.value)} />
+              </div>
+              <button type="button" className="btn btn-ghost" onClick={applyProduct} disabled={!fillProductId}>Fill costs</button>
+            </div>
+          )}
           <div className="full"><label>Products</label><textarea value={form.products} onChange={(e) => setForm({ ...form, products: e.target.value })} /></div>
           <div className="row3">
             <div><label>Order total</label><input required type="text" inputMode="decimal" placeholder="0 or 270+180+40" value={form.total} onChange={(e) => setForm({ ...form, total: e.target.value })} onBlur={makeAmountBlurHandler(setForm, 'total')} onKeyDown={makeAmountKeyDownHandler(setForm, 'total')} /></div>
@@ -413,7 +485,7 @@ export default function Dashboard() {
           </div>
           <div className="full"><label>Notes (optional)</label><input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           <div className="btn-row">
-            {form.id && <button type="button" className="btn btn-ghost" onClick={() => setForm(emptyForm)}>Cancel</button>}
+            {form.id && <button type="button" className="btn btn-ghost" onClick={() => { setForm(blankForm()); setFillProductId(''); setFillQty('1'); }}>Cancel</button>}
             <button type="submit" className="btn btn-primary">{form.id ? 'Save changes' : 'Add order'}</button>
           </div>
         </form>
